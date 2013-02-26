@@ -12,11 +12,11 @@ class Plugin :
 			if result :
 				self.regexes_actions[regex](bot, serv, ev)
 
-	def test(self, message) :
+	def test(self, message, bot) :
 		for regex in self.regexes_actions :
 			result = re.match(regex, message)
 			if result :
-				self.regexes_actions[regex](None, Serv(), EvTest(message))
+				self.regexes_actions[regex](bot, Serv(), EvTest(message))
 
 class EvTest :
 	def __init__(self, message) :
