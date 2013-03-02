@@ -4,6 +4,10 @@ import irclib, ircbot, time, json, argparse, os
 import sys
 
 class Bot(ircbot.SingleServerIRCBot) :
+	""" 
+	Generic IRC Bot. Reads config from a json file, works with a system of 
+	plugins and commands
+	"""
 	def __init__ (self) :
 		self._default_path_to_config_file = 'config.json'
 		self._path_to_config_file = ''
@@ -12,15 +16,15 @@ class Bot(ircbot.SingleServerIRCBot) :
 		self.commands = []
 		self.verbosity = False
 		self.logging = False
-		self.getArgs()
-		self.getConfig()
-		self.getModules('plugins')
-		self.getModules('commands')
+		self._getArgs()
+		self._getConfig()
+		self._getModules('plugins')
+		self._getModules('commands')
 		ircbot.SingleServerIRCBot.__init__(self, [(self._config['server'], 
 			self._config['port'])], self._config['nick'], self._config['name'])
 		self.log('Running')
 
-	def getConfig (self) :
+	def _getConfig (self) :
 		"""Reads values such as nick or pw from a json file. If no config file
 		is specified, or if it is an incorrect one, values will be read from a
 		default config file."""
@@ -39,7 +43,7 @@ class Bot(ircbot.SingleServerIRCBot) :
 		self.server = self._config['server']
 		self.channels = self._config['channels']
 
-	def getArgs(self) :
+	def _getArgs(self) :
 		"""Parses arguments : logging, verbosity, custom config file"""
 		parser = argparse.ArgumentParser()
 		parser.add_argument('-log', help = 'save logs', action = 'store_true')
@@ -57,13 +61,16 @@ class Bot(ircbot.SingleServerIRCBot) :
 
 	def importModule(self, name) :
 		"""Loads a module from a package. """
-		mod = __import__(name)
+		try :
+			mod = __import__(name)
+		except Exception as e :
+			raise ImportError(e.args)
 		components = name.split('.')
 		for comp in components[1:] :
 			mod = getattr(mod, comp)
 		return mod
 
-	def getModules(self, package) :
+	def _getModules(self, package) :
 		"""Loads a list of modules (plugins or commands) read from the config 
 		file. They must be located in the Plugins and Commands packages."""
 		for module in self._config[package] :
@@ -74,21 +81,24 @@ class Bot(ircbot.SingleServerIRCBot) :
 				if package == "commands" :
 					m = self.importModule('Commands.' + module)
 					self.commands.append(m)
-			except (ImportError) :
-				self.log('Couldn\'t import %s' % module)
+			except ImportError as e :
+				self.log('Couldn\'t import %s : %s, line %s, col %s' % (module, 
+						e.args[0][0], e.args[0][1][1], e.args[0][1][2]), 1)
 
-	def reloadModules(self) :
-		for m in self.plugins :
+	def reloadModules(self, package) :
+		for m in package :
 			self.log(m)
-			reload(m)
-		for m in self.commands :
-			self.log(m)
-			reload(m)
+			try :
+				reload(m)
+			except Exception as e :
+				self.log('Couldn\'t import %s : %s, line %s, col %s' % (module, 
+						e.args[0][0], e.args[0][1][1], e.args[0][1][2]), 1)
 		self.log('Reloaded')
 
-	def log(self, message) :
+	def log(self, message, force = 0) :
 		"""Prints log messages to stdout if verbosity is on, and to a log file 
-		if logging is on."""
+		if logging is on. 
+		Error messages can be displayed even if verbosity is off, with force."""
 		dt = list(time.localtime())
 		if dt[3] < 10 :
 			dt[3] = '0%s' % dt[3]
@@ -98,7 +108,7 @@ class Bot(ircbot.SingleServerIRCBot) :
 			dt[5] = '0%s' % dt[5]
 		message = '%s:%s:%s, %s/%s/%s : %s' % (dt[3], dt[4], dt[5], dt[2], dt[1], dt[0], message)
 		
-		if self.verbosity :
+		if self.verbosity or force :
 			print message
 
 		if self.logging :
@@ -137,7 +147,10 @@ class Bot(ircbot.SingleServerIRCBot) :
 		channel = ev.target()
 		message = ev.arguments()[0]
 		for p in self.plugins :
-			p.plugin.run(self, serv, ev) 
+			try :
+				p.plugin.run(self, serv, ev) 
+			except PluginError as e :
+				self.log('PluginError : %s (%s)' % (e.value, p))
 
 	def on_privmsg(self, serv, ev) :
 		source = irclib.nm_to_n(ev.source())

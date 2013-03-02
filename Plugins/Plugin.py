@@ -10,13 +10,23 @@ class Plugin :
 		for regex in self.regexes_actions :
 			result = re.match(regex, message)
 			if result :
-				self.regexes_actions[regex](bot, serv, ev)
+				try :
+					self.regexes_actions[regex](bot, serv, ev)
+				except Exception as e :
+					raise PluginError(e.args)
 
 	def test(self, message, bot) :
 		for regex in self.regexes_actions :
 			result = re.match(regex, message)
 			if result :
 				self.regexes_actions[regex](bot, Serv(), EvTest(message))
+
+class PluginError(Exception) :
+	def __init__(self, value) :
+		self.value = value
+
+	def __str__(self):
+		return repr(self.value)
 
 class EvTest :
 	def __init__(self, message) :
@@ -42,3 +52,6 @@ class Serv() :
 
 	def prettyPrint(self, chan, message) :
 		print '%s : <Bot> %s' % (chan, message)
+
+	def kick(self, chan, user, message = '') :
+		print 'Kicked %s from #%s.' % (chan, user)
