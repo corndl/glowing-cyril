@@ -113,6 +113,9 @@ class Bot(ircbot.SingleServerIRCBot) :
 		components = name.split('.')
 		for comp in components[1:] :
 			mod = getattr(mod, comp)
+		if mod in self.plugins or mod in self.commands :
+			self.log('%s has already been imported' % name)
+			return 
 		if 'Plugins' in name :
 			self.plugins.append(mod)
 		else :
