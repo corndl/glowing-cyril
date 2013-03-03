@@ -1,5 +1,4 @@
-from Plugin import Plugin
-import irclib
+from Command import Command
 
 def run(bot, serv, ev) :
 	bot.log('Reloading plugins')
@@ -9,4 +8,4 @@ def run(bot, serv, ev) :
 
 regex = 'reload'
 
-command = Plugin(regex, run)
+command = Command(regex, run)

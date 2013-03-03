@@ -1,4 +1,4 @@
-from Plugin import Plugin
+from Command import Command
 import irclib
 
 def run(bot, serv, ev) :
@@ -8,4 +8,4 @@ def run(bot, serv, ev) :
 
 regex = 'part #.+'
 
-command = Plugin(regex, run)
+command = Command(regex, run)

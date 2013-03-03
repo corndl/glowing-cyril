@@ -6,7 +6,39 @@ import sys
 class Bot(ircbot.SingleServerIRCBot) :
 	""" 
 	Generic IRC Bot. Reads config from a json file, works with a system of 
-	plugins and commands
+	plugins and commands.
+
+	Private attributes :
+		_default_path_to_config_file
+		_path_to_config_file
+		_log_file
+		_verbosity 	whether to display logs or not
+		_logging 	whether to save logs to _log_file or not
+		_config 	values read from config file, such as nick, pw, etc
+
+	Public attributes :
+		_plugins 	array of plugins 
+		_commands 	array of plugins
+
+	Private methods :	
+		_getConfig()
+		_getArgs()
+		_getModules()
+
+	Public methods :
+		importModule()
+		reloadModules()
+		log()
+		identify()
+		join()
+		part()
+
+	Event handlers :	
+		on_welcome()
+		on_join()
+		on_privnotice()
+		on_pubmsg()
+		on_privmsg()
 	"""
 	def __init__ (self) :
 		self._default_path_to_config_file = 'config.json'
@@ -14,8 +46,8 @@ class Bot(ircbot.SingleServerIRCBot) :
 		self._log_file = ''
 		self.plugins = []
 		self.commands = []
-		self.verbosity = False
-		self.logging = False
+		self._verbosity = False
+		self._logging = False
 		self._getArgs()
 		self._getConfig()
 		self._getModules('plugins')
@@ -52,12 +84,25 @@ class Bot(ircbot.SingleServerIRCBot) :
 		args = parser.parse_args()
 		if args.log :
 			print 'Logging on'
-			self.logging = True
+			self._logging = True
 		if args.v :
 			print 'Verbosity on'
-			self.verbosity = True
+			self._verbosity = True
 		if args.c :
 			self._path_to_config_file = args.c 
+
+	def _getModules(self, package) :
+		"""Loads a list of modules (plugins or commands) read from the config 
+		file. They must be located in the Plugins and Commands packages."""
+		for module in self._config[package] :
+			try :
+				if package == "plugins" :
+					self.importModule('Plugins.' + module)
+				if package == "commands" :
+					self.importModule('Commands.' + module)
+			except ImportError as e :
+				self.log('Couldn\'t import %s : %s, line %s, col %s' % (module, 
+						e.args[0][0], e.args[0][1][1], e.args[0][1][2]), 1)
 
 	def importModule(self, name) :
 		"""Loads a module from a package. """
@@ -68,22 +113,10 @@ class Bot(ircbot.SingleServerIRCBot) :
 		components = name.split('.')
 		for comp in components[1:] :
 			mod = getattr(mod, comp)
-		return mod
-
-	def _getModules(self, package) :
-		"""Loads a list of modules (plugins or commands) read from the config 
-		file. They must be located in the Plugins and Commands packages."""
-		for module in self._config[package] :
-			try :
-				if package == "plugins" :
-					m = self.importModule('Plugins.' + module)
-					self.plugins.append(m)
-				if package == "commands" :
-					m = self.importModule('Commands.' + module)
-					self.commands.append(m)
-			except ImportError as e :
-				self.log('Couldn\'t import %s : %s, line %s, col %s' % (module, 
-						e.args[0][0], e.args[0][1][1], e.args[0][1][2]), 1)
+		if 'Plugins' in name :
+			self.plugins.append(mod)
+		else :
+			self.commands.append(mod)
 
 	def reloadModules(self, package) :
 		for m in package :
@@ -108,10 +141,10 @@ class Bot(ircbot.SingleServerIRCBot) :
 			dt[5] = '0%s' % dt[5]
 		message = '%s:%s:%s, %s/%s/%s : %s' % (dt[3], dt[4], dt[5], dt[2], dt[1], dt[0], message)
 		
-		if self.verbosity or force :
+		if self._verbosity or force :
 			print message
 
-		if self.logging :
+		if self._logging :
 			directory = 'logs'
 			if not os.path.exists(directory) :
 				os.makedirs(directory)
@@ -124,6 +157,16 @@ class Bot(ircbot.SingleServerIRCBot) :
 
 	def identify(self, serv) :
 		serv.privmsg('NickServ', 'identify ' + self.password)
+
+	def join(self, serv, chan, source) :
+		serv.join(chan)
+		source_nick = irclib.nm_to_n(source)
+		self.log('Joined %s - command used by %s (%s)' % (chan, source_nick, source))
+
+	def part(self, serv, chan, source) :
+		serv.part(chan)
+		source_nick = irclib.nm_to_n(source)
+		self.log('Left %s - command used by %s (%s)' % (chan, source_nick, source))
 
 	def on_welcome(self, serv, ev) :
 		self.log('Connected')
@@ -156,20 +199,9 @@ class Bot(ircbot.SingleServerIRCBot) :
 		source = irclib.nm_to_n(ev.source())
 		message = ev.arguments()[0]
 		user = irclib.nm_to_h(ev.source())
-		self.log(user)
 		if user in self._config['admins'] :
 			for c in self.commands :
 				c.command.run(self, serv, ev)
-
-	def join(self, serv, chan, source) :
-		serv.join(chan)
-		source_nick = irclib.nm_to_n(source)
-		self.log('Joined %s - command used by %s (%s)' % (chan, source_nick, source))
-
-	def part(self, serv, chan, source) :
-		serv.part(chan)
-		source_nick = irclib.nm_to_n(source)
-		self.log('Left %s - command used by %s (%s)' % (chan, source_nick, source))
 
 if __name__ == "__main__" :
 	try :
