@@ -9,5 +9,5 @@ REGEX = '.'
 REGEXES_RUN = { REGEX : run }
 plugin = Plugin(REGEXES_RUN)
 
-if __name__ == '__main'__ :
+if __name__ == '__main__' :
 	plugin.test('test', None)
