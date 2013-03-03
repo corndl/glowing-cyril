@@ -1,12 +1,27 @@
 # -*- coding: utf8 -*-
 
-import irclib, ircbot, time, json, argparse, os
+import irclib
+import ircbot
+import time
+import json
+import argparse
+import os
 import sys
+from Plugins.Plugin import PluginError
 
 class Bot(ircbot.SingleServerIRCBot) :
 	""" 
 	Generic IRC Bot. Reads config from a json file, works with a system of 
 	plugins and commands.
+	Default config file is config.json.
+	To add a plugin, edit the config file, or you can dynamically import a
+	plugin while the bot is running with the Import command.
+
+	Commands : 
+		Join
+		Part
+		Import
+		Reload
 
 	Private attributes :
 		_default_path_to_config_file
@@ -40,6 +55,7 @@ class Bot(ircbot.SingleServerIRCBot) :
 		on_pubmsg()
 		on_privmsg()
 	"""
+
 	def __init__ (self) :
 		self._default_path_to_config_file = 'config.json'
 		self._path_to_config_file = ''
@@ -55,6 +71,10 @@ class Bot(ircbot.SingleServerIRCBot) :
 		ircbot.SingleServerIRCBot.__init__(self, [(self._config['server'], 
 			self._config['port'])], self._config['nick'], self._config['name'])
 		self.log('Running')
+
+##########################################################################
+# Private methods
+##########################################################################
 
 	def _getConfig (self) :
 		"""Reads values such as nick or pw from a json file. If no config file
@@ -103,6 +123,10 @@ class Bot(ircbot.SingleServerIRCBot) :
 			except ImportError as e :
 				self.log('Couldn\'t import %s : %s, line %s, col %s' % (module, 
 						e.args[0][0], e.args[0][1][1], e.args[0][1][2]), 1)
+
+##########################################################################
+# Public methods
+##########################################################################
 
 	def importModule(self, name) :
 		"""Loads a module from a package. """
@@ -164,12 +188,18 @@ class Bot(ircbot.SingleServerIRCBot) :
 	def join(self, serv, chan, source) :
 		serv.join(chan)
 		source_nick = irclib.nm_to_n(source)
-		self.log('Joined %s - command used by %s (%s)' % (chan, source_nick, source))
+		self.log('Joined %s - command used by %s (%s)' % (chan, source_nick, 
+			source))
 
 	def part(self, serv, chan, source) :
 		serv.part(chan)
 		source_nick = irclib.nm_to_n(source)
-		self.log('Left %s - command used by %s (%s)' % (chan, source_nick, source))
+		self.log('Left %s - command used by %s (%s)' % (chan, source_nick, 
+			source))
+
+##########################################################################
+# Event handlers
+##########################################################################
 
 	def on_welcome(self, serv, ev) :
 		self.log('Connected')
