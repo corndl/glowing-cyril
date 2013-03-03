@@ -1,0 +1,29 @@
+{
+    "server" : "irc.iiens.net",
+    "port" : 6667,
+    "nick" : "testBot",
+    "name" : "lol",
+    "password" : "bow",
+    "admins" : 
+        [
+            "defrance20"
+        ],
+    "channels" : 
+        [
+            "#corntest"
+        ],
+	"plugins" :
+		[
+		],
+	"commands" :
+		[
+			"Join",
+			"Part",
+			"Reload",
+			"Import"
+		],
+	"join_message" : "Sup",
+	"part_message" : "Bye",
+	"quit_message" : "Kthxbye"
+}
+
