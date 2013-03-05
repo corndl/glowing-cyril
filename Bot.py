@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf8 -*-
 
 import irclib
@@ -178,8 +179,8 @@ class Bot(ircbot.SingleServerIRCBot) :
 			if not self._log_file :
 				self._log_file = '%s-%s-%s_%s:%s:%s' % (dt[0], dt[1], dt[2], dt[3], dt[4], dt[5])
 			path_to_log_file = os.path.join(directory, self._log_file)
-			f = open(path_to_log_file, 'w')
-			f.write(message)
+			f = open(path_to_log_file, 'a')
+			f.write('%s\n' %message)
 			f.close()
 
 	def identify(self, serv) :
